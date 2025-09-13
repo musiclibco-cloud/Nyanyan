@@ -1,0 +1,145 @@
+--// AnimatorRVX: Simple revived animator that plays any rbxassetid animation
+--// Works in executors without game ownership
+--// Features: Play, Stop, Looping
+
+local RunService = game:GetService("RunService")
+local InsertService = game:GetService("InsertService")
+
+local AnimatorRVX = {}
+AnimatorRVX.__index = AnimatorRVX
+
+-- Helper: Load KeyframeSequence from rbxassetid
+local function loadKeyframeSequence(assetId)
+    local model
+    pcall(function()
+        model = InsertService:LoadAsset(assetId)
+    end)
+    if not model then return nil end
+    local kfs = model:FindFirstChildOfClass("KeyframeSequence") or model:FindFirstChildWhichIsA("KeyframeSequence", true)
+    if not kfs then
+        model:Destroy()
+        return nil
+    end
+    kfs.Parent = nil
+    model:Destroy()
+    return kfs
+end
+
+-- Convert KeyframeSequence into raw frame data
+local function parseKeyframeSequence(kfs)
+    local frames = {}
+    local length = 0
+
+    for _, keyframe in ipairs(kfs:GetKeyframes()) do
+        local time = keyframe.Time
+        length = math.max(length, time)
+
+        local poses = {}
+        for _, kp in ipairs(keyframe:GetDescendants()) do
+            if kp:IsA("Pose") then
+                poses[kp.Name] = kp.CFrame
+            end
+        end
+
+        table.insert(frames, {Time = time, Poses = poses})
+    end
+
+    table.sort(frames, function(a, b) return a.Time < b.Time end)
+    return frames, length
+end
+
+-- Create Animator instance
+function AnimatorRVX.new(character, assetId)
+    local self = setmetatable({}, AnimatorRVX)
+    self.Character = character
+    self.AssetId = assetId
+    self.Frames = {}
+    self.Length = 0
+    self.IsPlaying = false
+    self.Looped = false
+    self.CurrentTime = 0
+    self.Connection = nil
+
+    -- Load animation
+    local kfs = loadKeyframeSequence(assetId)
+    if kfs then
+        self.Frames, self.Length = parseKeyframeSequence(kfs)
+        kfs:Destroy()
+    else
+        warn("AnimatorRVX: Failed to load KeyframeSequence for " .. tostring(assetId))
+    end
+
+    return self
+end
+
+-- Apply poses to character joints
+function AnimatorRVX:applyPoses(frameA, frameB, alpha)
+    for jointName, cfA in pairs(frameA.Poses) do
+        local cfB = frameB.Poses[jointName]
+        local cf = cfB and cfA:Lerp(cfB, alpha) or cfA
+        local joint = self.Character:FindFirstChild(jointName, true)
+        if joint and joint:IsA("Motor6D") then
+            joint.Transform = cf
+        end
+    end
+end
+
+-- Find two frames to interpolate between
+function AnimatorRVX:getFramesAtTime(t)
+    local frames = self.Frames
+    if #frames == 0 then return nil, nil, 0 end
+    if t <= frames[1].Time then return frames[1], frames[1], 0 end
+    if t >= frames[#frames].Time then return frames[#frames], frames[#frames], 0 end
+
+    for i = 1, #frames - 1 do
+        local a, b = frames[i], frames[i+1]
+        if t >= a.Time and t <= b.Time then
+            local alpha = (t - a.Time) / (b.Time - a.Time)
+            return a, b, alpha
+        end
+    end
+
+    return frames[#frames], frames[#frames], 0
+end
+
+-- Playback loop
+function AnimatorRVX:step(dt)
+    if not self.IsPlaying then return end
+    self.CurrentTime = self.CurrentTime + dt
+    if self.CurrentTime > self.Length then
+        if self.Looped then
+            self.CurrentTime = self.CurrentTime % self.Length
+        else
+            self:Stop()
+            return
+        end
+    end
+
+    local a, b, alpha = self:getFramesAtTime(self.CurrentTime)
+    if a and b then
+        self:applyPoses(a, b, alpha)
+    end
+end
+
+-- Play animation
+function AnimatorRVX:Play(looped)
+    self.Looped = looped or false
+    self.CurrentTime = 0
+    self.IsPlaying = true
+
+    if self.Connection then self.Connection:Disconnect() end
+    self.Connection = RunService.Heartbeat:Connect(function(dt)
+        self:step(dt)
+    end)
+end
+
+-- Stop animation
+function AnimatorRVX:Stop()
+    self.IsPlaying = false
+    if self.Connection then
+        self.Connection:Disconnect()
+        self.Connection = nil
+    end
+end
+
+return AnimatorRVX
