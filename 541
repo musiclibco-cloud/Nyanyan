@@ -359,7 +359,7 @@ function LibwaitaUI:CreateWindow(config)
             
             local ToggleFrame = CreateInstance("Frame", {
                 Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, isMobile and 50 : 46),
+                Size = UDim2.new(1, 0, 0, isMobile and 50 or 46),
                 BackgroundColor3 = Color3.fromRGB(245, 245, 245),
                 BorderSizePixel = 0
             })
