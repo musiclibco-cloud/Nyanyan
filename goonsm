@@ -2,8 +2,6 @@
     Android Holo-Style Mobile UI Library for Roblox
     Created with mobile-first design principles
     Inspired by Android 4.x Holo Dark theme
-    
-    Load via: loadstring(game:HttpGet("https://raw.githubusercontent.com/musiclibco-cloud/Nyanyan/refs/heads/main/goonsime"))()
 ]]
 
 local UILib = {}
