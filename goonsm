@@ -1,0 +1,1191 @@
+--[[
+    Android Holo-Style Mobile UI Library for Roblox
+    Created with mobile-first design principles
+    Inspired by Android 4.x Holo Dark theme
+]]
+
+local UILib = {}
+UILib.__index = UILib
+
+-- ═══════════════════════════════════════════════════════════════
+-- THEME CONFIGURATION
+-- ═══════════════════════════════════════════════════════════════
+local Theme = {
+    -- Colors inspired by Android Holo Dark
+    Background = Color3.fromRGB(30, 30, 30),
+    Secondary = Color3.fromRGB(45, 45, 45),
+    Border = Color3.fromRGB(60, 60, 60),
+    Accent = Color3.fromRGB(51, 181, 229), -- Holo blue
+    AccentDark = Color3.fromRGB(33, 150, 243),
+    Text = Color3.fromRGB(230, 230, 230),
+    TextDim = Color3.fromRGB(150, 150, 150),
+    TabActive = Color3.fromRGB(51, 181, 229),
+    TabInactive = Color3.fromRGB(45, 45, 45),
+    Success = Color3.fromRGB(76, 175, 80),
+    Warning = Color3.fromRGB(255, 152, 0),
+    Error = Color3.fromRGB(244, 67, 54),
+    
+    -- Dimensions
+    CornerRadius = 3,
+    BorderThickness = 1,
+    TitleBarHeight = 32,
+    TabHeight = 30,
+    
+    -- Animation
+    AnimationSpeed = 0.3,
+    SplashDuration = 2,
+}
+
+-- ═══════════════════════════════════════════════════════════════
+-- UTILITY FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════
+
+local function CreateRoundedFrame(parent, props)
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = props.BackgroundColor or Theme.Background
+    frame.BorderSizePixel = 0
+    frame.Size = props.Size or UDim2.new(1, 0, 1, 0)
+    frame.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    frame.ZIndex = props.ZIndex or 1
+    frame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, props.CornerRadius or Theme.CornerRadius)
+    corner.Parent = frame
+    
+    if props.Border then
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Theme.Border
+        stroke.Thickness = Theme.BorderThickness
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = frame
+    end
+    
+    return frame
+end
+
+local function CreateTextLabel(parent, props)
+    local label = Instance.new("TextLabel")
+    label.Text = props.Text or ""
+    label.Font = Enum.Font.Gotham
+    label.TextSize = props.TextSize or 14
+    label.TextColor3 = props.TextColor or Theme.Text
+    label.BackgroundTransparency = 1
+    label.Size = props.Size or UDim2.new(1, 0, 1, 0)
+    label.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    label.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
+    label.TextYAlignment = props.TextYAlignment or Enum.TextYAlignment.Center
+    label.TextWrapped = props.TextWrapped or false
+    label.Parent = parent
+    
+    if props.Padding then
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, props.Padding)
+        padding.PaddingRight = UDim.new(0, props.Padding)
+        padding.Parent = label
+    end
+    
+    return label
+end
+
+local function CreateButton(parent, props)
+    local btn = CreateRoundedFrame(parent, {
+        BackgroundColor = props.BackgroundColor or Theme.Secondary,
+        Size = props.Size,
+        Position = props.Position,
+        CornerRadius = props.CornerRadius or 6
+    })
+    
+    local label = CreateTextLabel(btn, {
+        Text = props.Text or "",
+        TextSize = props.TextSize or 14,
+        TextColor = props.TextColor or Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Center
+    })
+    
+    local btnInstance = Instance.new("TextButton")
+    btnInstance.Text = ""
+    btnInstance.BackgroundTransparency = 1
+    btnInstance.Size = UDim2.new(1, 0, 1, 0)
+    btnInstance.Parent = btn
+    
+    if props.Callback then
+        btnInstance.MouseButton1Click:Connect(props.Callback)
+    end
+    
+    -- Hover effect
+    btnInstance.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(
+            math.min(255, btn.BackgroundColor3.R * 255 + 15),
+            math.min(255, btn.BackgroundColor3.G * 255 + 15),
+            math.min(255, btn.BackgroundColor3.B * 255 + 15)
+        )
+    end)
+    
+    btnInstance.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = props.BackgroundColor or Theme.Secondary
+    end)
+    
+    return btn, btnInstance, label
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- SPLASH SCREEN
+-- ═══════════════════════════════════════════════════════════════
+
+local function CreateSplashScreen(parent, callback)
+    local splash = Instance.new("Frame")
+    splash.BackgroundColor3 = Theme.Background
+    splash.BorderSizePixel = 0
+    splash.Size = UDim2.new(1, 0, 1, 0)
+    splash.Position = UDim2.new(0, 0, 0, 0)
+    splash.ZIndex = 100
+    splash.Parent = parent
+    
+    -- Logo image
+    local logo = Instance.new("ImageLabel")
+    logo.Image = "https://raw.githubusercontent.com/VoidUiLib/Teto/refs/heads/main/OIP-removebg-preview.png"
+    logo.BackgroundTransparency = 1
+    logo.Size = UDim2.new(0, 140, 0, 140)
+    logo.Position = UDim2.new(0.5, -70, 0.5, -85)
+    logo.ImageTransparency = 0
+    logo.ZIndex = 101
+    logo.Parent = splash
+    
+    -- Loading text
+    local loadingText = CreateTextLabel(splash, {
+        Text = "Loading...",
+        TextSize = 15,
+        Size = UDim2.new(0, 160, 0, 25),
+        Position = UDim2.new(0.5, -80, 0.5, 70),
+        TextXAlignment = Enum.TextXAlignment.Center
+    })
+    loadingText.ZIndex = 101
+    loadingText.Font = Enum.Font.GothamBold
+    
+    -- Loading bar
+    local barBg = CreateRoundedFrame(splash, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(0, 200, 0, 3),
+        Position = UDim2.new(0.5, -100, 0.5, 105),
+        CornerRadius = 2
+    })
+    barBg.ZIndex = 101
+    
+    local barFill = CreateRoundedFrame(barBg, {
+        BackgroundColor = Theme.Accent,
+        Size = UDim2.new(0, 0, 1, 0),
+        CornerRadius = 2
+    })
+    barFill.ZIndex = 102
+    
+    -- Animate loading bar
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(barFill, TweenInfo.new(Theme.SplashDuration, Enum.EasingStyle.Linear), {
+        Size = UDim2.new(1, 0, 1, 0)
+    }):Play()
+    
+    -- Fade out after duration
+    task.wait(Theme.SplashDuration)
+    
+    TweenService:Create(splash, TweenInfo.new(0.5), {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(logo, TweenInfo.new(0.5), {
+        ImageTransparency = 1
+    }):Play()
+    
+    TweenService:Create(loadingText, TweenInfo.new(0.5), {
+        TextTransparency = 1
+    }):Play()
+    
+    task.wait(0.5)
+    splash:Destroy()
+    
+    if callback then callback() end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- MAIN UI LIBRARY CLASS
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib.new(title, config)
+    local self = setmetatable({}, UILib)
+    
+    config = config or {}
+    self.Title = title or "Application"
+    self.Size = config.Size or UDim2.new(0, 320, 0, 280)
+    self.Position = config.Position or UDim2.new(0.5, -160, 0.5, -140)
+    self.Tabs = {}
+    self.ActiveTab = nil
+    self.Minimized = false
+    self.Notifications = {}
+    
+    -- Create ScreenGui
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "HoloUI_" .. title
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    self.ScreenGui.IgnoreGuiInset = true
+    
+    -- Parent to CoreGui or PlayerGui
+    local success = pcall(function()
+        self.ScreenGui.Parent = game:GetService("CoreGui")
+    end)
+    
+    if not success then
+        self.ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    end
+    
+    -- Show splash screen, then create window
+    CreateSplashScreen(self.ScreenGui, function()
+        self:CreateMainWindow()
+        self:CreateTitleBar()
+        self:CreateTabBar()
+        self:CreateContentArea()
+        self:CreateNotificationContainer()
+        self:MakeDraggable()
+    end)
+    
+    return self
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- WINDOW CREATION
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:CreateMainWindow()
+    self.MainWindow = CreateRoundedFrame(self.ScreenGui, {
+        BackgroundColor = Theme.Background,
+        Size = self.Size,
+        Position = self.Position,
+        Border = true
+    })
+    
+    -- Initial fade-in animation
+    self.MainWindow.BackgroundTransparency = 1
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(self.MainWindow, TweenInfo.new(0.5), {
+        BackgroundTransparency = 0
+    }):Play()
+    
+    -- Add drop shadow effect
+    local shadow = Instance.new("ImageLabel")
+    shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    shadow.ImageTransparency = 0.7
+    shadow.BackgroundTransparency = 1
+    shadow.Size = UDim2.new(1, 30, 1, 30)
+    shadow.Position = UDim2.new(0, -15, 0, -15)
+    shadow.ZIndex = 0
+    shadow.Parent = self.MainWindow
+end
+
+function UILib:CreateTitleBar()
+    self.TitleBar = CreateRoundedFrame(self.MainWindow, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, Theme.TitleBarHeight),
+        Position = UDim2.new(0, 0, 0, 0),
+        CornerRadius = Theme.CornerRadius
+    })
+    
+    -- Title text
+    self.TitleLabel = CreateTextLabel(self.TitleBar, {
+        Text = self.Title,
+        TextSize = 13,
+        Size = UDim2.new(1, -68, 1, 0),
+        Position = UDim2.new(0, 8, 0, 0),
+        Padding = 6
+    })
+    self.TitleLabel.Font = Enum.Font.GothamBold
+    
+    -- Minimize button
+    local minimizeBtn, _ = CreateButton(self.TitleBar, {
+        Size = UDim2.new(0, 28, 0, 24),
+        Position = UDim2.new(1, -62, 0.5, -12),
+        Text = "–",
+        TextSize = 16,
+        Callback = function() self:ToggleMinimize() end
+    })
+    
+    -- Close button
+    local closeBtn, _ = CreateButton(self.TitleBar, {
+        Size = UDim2.new(0, 28, 0, 24),
+        Position = UDim2.new(1, -32, 0.5, -12),
+        Text = "×",
+        TextSize = 18,
+        BackgroundColor = Theme.Error,
+        Callback = function() self:Close() end
+    })
+end
+
+function UILib:CreateTabBar()
+    self.TabBar = CreateRoundedFrame(self.MainWindow, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, Theme.TabHeight),
+        Position = UDim2.new(0, 0, 0, Theme.TitleBarHeight),
+        CornerRadius = 0
+    })
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = self.TabBar
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 5)
+    padding.PaddingRight = UDim.new(0, 5)
+    padding.PaddingTop = UDim.new(0, 5)
+    padding.PaddingBottom = UDim.new(0, 5)
+    padding.Parent = self.TabBar
+end
+
+function UILib:CreateContentArea()
+    self.ContentArea = CreateRoundedFrame(self.MainWindow, {
+        BackgroundColor = Theme.Background,
+        Size = UDim2.new(1, 0, 1, -(Theme.TitleBarHeight + Theme.TabHeight)),
+        Position = UDim2.new(0, 0, 0, Theme.TitleBarHeight + Theme.TabHeight),
+        CornerRadius = 0
+    })
+end
+
+function UILib:CreateNotificationContainer()
+    self.NotificationContainer = Instance.new("Frame")
+    self.NotificationContainer.BackgroundTransparency = 1
+    self.NotificationContainer.Size = UDim2.new(0, 240, 1, 0)
+    self.NotificationContainer.Position = UDim2.new(1, -248, 0, 8)
+    self.NotificationContainer.Parent = self.ScreenGui
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = self.NotificationContainer
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- DRAGGING FUNCTIONALITY
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:MakeDraggable()
+    local UIS = game:GetService("UserInputService")
+    local dragging, dragInput, dragStart, startPos
+    
+    local function update(input)
+        local delta = input.Position - dragStart
+        self.MainWindow.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+    
+    self.TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = self.MainWindow.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    self.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- TAB MANAGEMENT
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:AddTab(name, icon)
+    if self.Tabs[name] then
+        warn("Tab '" .. name .. "' already exists!")
+        return
+    end
+    
+    -- Create tab content frame
+    local tabContent = CreateRoundedFrame(self.ContentArea, {
+        BackgroundColor = Theme.Background,
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        CornerRadius = 0
+    })
+    tabContent.Visible = false
+    
+    -- Add padding to content
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 10)
+    padding.PaddingBottom = UDim.new(0, 10)
+    padding.Parent = tabContent
+    
+    -- Add scroll frame for content
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarImageColor3 = Theme.Accent
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.Parent = tabContent
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = scrollFrame
+    
+    -- Auto-resize canvas
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+    end)
+    
+    -- Create tab button in tab bar
+    local tabBtn, tabBtnInstance = CreateButton(self.TabBar, {
+        Size = UDim2.new(0, 70, 1, -6),
+        Text = (icon or "") .. " " .. name,
+        TextSize = 11,
+        BackgroundColor = Theme.TabInactive,
+        Callback = function() self:SetTab(name) end
+    })
+    
+    -- Store tab data
+    self.Tabs[name] = {
+        Content = tabContent,
+        ScrollFrame = scrollFrame,
+        TabButton = tabBtn,
+        Icon = icon
+    }
+    
+    -- Set first tab as active
+    if not self.ActiveTab then
+        self:SetTab(name)
+    end
+    
+    return scrollFrame
+end
+
+function UILib:SetTab(name)
+    if not self.Tabs[name] then
+        warn("Tab '" .. name .. "' does not exist!")
+        return
+    end
+    
+    local TweenService = game:GetService("TweenService")
+    
+    -- Hide all tabs
+    for tabName, tab in pairs(self.Tabs) do
+        tab.Content.Visible = (tabName == name)
+        
+        -- Update tab button colors
+        local targetColor = (tabName == name) and Theme.TabActive or Theme.TabInactive
+        TweenService:Create(tab.TabButton, TweenInfo.new(Theme.AnimationSpeed), {
+            BackgroundColor3 = targetColor
+        }):Play()
+    end
+    
+    self.ActiveTab = name
+end
+
+function UILib:RemoveTab(name)
+    if not self.Tabs[name] then
+        warn("Tab '" .. name .. "' does not exist!")
+        return
+    end
+    
+    self.Tabs[name].Content:Destroy()
+    self.Tabs[name].TabButton:Destroy()
+    self.Tabs[name] = nil
+    
+    -- Switch to first available tab
+    if self.ActiveTab == name then
+        for tabName, _ in pairs(self.Tabs) do
+            self:SetTab(tabName)
+            break
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- UI COMPONENTS
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:AddButton(tabName, text, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local btn, _ = CreateButton(self.Tabs[tabName].ScrollFrame, {
+        Size = UDim2.new(1, 0, 0, 28),
+        Text = text,
+        TextSize = 11,
+        BackgroundColor = Theme.Accent,
+        Callback = callback
+    })
+    
+    return btn
+end
+
+function UILib:AddLabel(tabName, text, config)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    config = config or {}
+    
+    local label = CreateTextLabel(self.Tabs[tabName].ScrollFrame, {
+        Text = text,
+        TextSize = config.TextSize or 11,
+        Size = UDim2.new(1, 0, 0, config.Height or 20),
+        Padding = 6,
+        TextColor = config.TextColor or Theme.Text,
+        TextWrapped = config.TextWrapped or false
+    })
+    
+    if config.Bold then
+        label.Font = Enum.Font.GothamBold
+    end
+    
+    return label
+end
+
+function UILib:AddParagraph(tabName, title, text)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 58),
+        CornerRadius = 3
+    })
+    
+    local titleLabel = CreateTextLabel(container, {
+        Text = title,
+        TextSize = 12,
+        Size = UDim2.new(1, -12, 0, 18),
+        Position = UDim2.new(0, 6, 0, 3),
+    })
+    titleLabel.Font = Enum.Font.GothamBold
+    
+    local textLabel = CreateTextLabel(container, {
+        Text = text,
+        TextSize = 10,
+        Size = UDim2.new(1, -12, 1, -24),
+        Position = UDim2.new(0, 6, 0, 21),
+        TextWrapped = true,
+        TextYAlignment = Enum.TextYAlignment.Top
+    })
+    textLabel.TextColor3 = Theme.TextDim
+    
+    return container
+end
+
+function UILib:AddToggle(tabName, text, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local state = default or false
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 28),
+        CornerRadius = 3
+    })
+    
+    local label = CreateTextLabel(container, {
+        Text = text,
+        TextSize = 11,
+        Size = UDim2.new(1, -45, 1, 0),
+        Padding = 6
+    })
+    
+    local toggleBtn = CreateRoundedFrame(container, {
+        BackgroundColor = state and Theme.Accent or Theme.Border,
+        Size = UDim2.new(0, 36, 0, 20),
+        Position = UDim2.new(1, -40, 0.5, -10),
+        CornerRadius = 10
+    })
+    
+    local knob = CreateRoundedFrame(toggleBtn, {
+        BackgroundColor = Color3.fromRGB(255, 255, 255),
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7),
+        CornerRadius = 7
+    })
+    
+    local btnInstance = Instance.new("TextButton")
+    btnInstance.Text = ""
+    btnInstance.BackgroundTransparency = 1
+    btnInstance.Size = UDim2.new(1, 0, 1, 0)
+    btnInstance.Parent = container
+    
+    btnInstance.MouseButton1Click:Connect(function()
+        state = not state
+        
+        local TweenService = game:GetService("TweenService")
+        TweenService:Create(toggleBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = state and Theme.Accent or Theme.Border
+        }):Play()
+        
+        TweenService:Create(knob, TweenInfo.new(0.2), {
+            Position = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+        }):Play()
+        
+        if callback then callback(state) end
+    end)
+    
+    -- Method to set toggle state programmatically
+    local toggleObj = {}
+    function toggleObj:SetState(newState)
+        if state ~= newState then
+            btnInstance.MouseButton1Click:Fire()
+        end
+    end
+    
+    return container, toggleObj
+end
+
+function UILib:AddSlider(tabName, text, min, max, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local value = default or min
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 42),
+        CornerRadius = 3
+    })
+    
+    local label = CreateTextLabel(container, {
+        Text = text .. ": " .. tostring(value),
+        TextSize = 11,
+        Size = UDim2.new(1, -12, 0, 18),
+        Position = UDim2.new(0, 0, 0, 3),
+        Padding = 6
+    })
+    
+    local sliderBg = CreateRoundedFrame(container, {
+        BackgroundColor = Theme.Border,
+        Size = UDim2.new(1, -12, 0, 4),
+        Position = UDim2.new(0, 6, 1, -14),
+        CornerRadius = 2
+    })
+    
+    local sliderFill = CreateRoundedFrame(sliderBg, {
+        BackgroundColor = Theme.Accent,
+        Size = UDim2.new((value - min) / (max - min), 0, 1, 0),
+        CornerRadius = 2
+    })
+    
+    local UIS = game:GetService("UserInputService")
+    local dragging = false
+    
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+    
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+           input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = (input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+            pos = math.clamp(pos, 0, 1)
+            value = math.floor(min + (max - min) * pos)
+            
+            sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+            label.Text = text .. ": " .. tostring(value)
+            
+            if callback then callback(value) end
+        end
+    end)
+    
+    -- Method to set slider value programmatically
+    local sliderObj = {}
+    function sliderObj:SetValue(newValue)
+        value = math.clamp(newValue, min, max)
+        local pos = (value - min) / (max - min)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = text .. ": " .. tostring(value)
+        if callback then callback(value) end
+    end
+    
+    return container, sliderObj
+end
+
+function UILib:AddTextbox(tabName, placeholder, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 28),
+        CornerRadius = 3
+    })
+    
+    local textbox = Instance.new("TextBox")
+    textbox.PlaceholderText = placeholder or "Enter text..."
+    textbox.Text = default or ""
+    textbox.Font = Enum.Font.Gotham
+    textbox.TextSize = 11
+    textbox.TextColor3 = Theme.Text
+    textbox.PlaceholderColor3 = Theme.TextDim
+    textbox.BackgroundTransparency = 1
+    textbox.Size = UDim2.new(1, -12, 1, 0)
+    textbox.Position = UDim2.new(0, 6, 0, 0)
+    textbox.ClearTextOnFocus = false
+    textbox.TextXAlignment = Enum.TextXAlignment.Left
+    textbox.Parent = container
+    
+    -- Enhanced textbox functionality
+    local textboxObj = {}
+    
+    function textboxObj:GetText()
+        return textbox.Text
+    end
+    
+    function textboxObj:SetText(text)
+        textbox.Text = text
+    end
+    
+    function textboxObj:Clear()
+        textbox.Text = ""
+    end
+    
+    function textboxObj:Focus()
+        textbox:CaptureFocus()
+    end
+    
+    -- Connect events
+    if callback then
+        textbox.FocusLost:Connect(function(enterPressed)
+            callback(textbox.Text, enterPressed)
+        end)
+    end
+    
+    -- Real-time text change callback
+    textbox:GetPropertyChangedSignal("Text"):Connect(function()
+        if callback then
+            task.spawn(function()
+                callback(textbox.Text, false)
+            end)
+        end
+    end)
+    
+    return container, textboxObj
+end
+
+function UILib:AddDropdown(tabName, text, options, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local selected = default or options[1] or "None"
+    local expanded = false
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 28),
+        CornerRadius = 3
+    })
+    
+    local label = CreateTextLabel(container, {
+        Text = text,
+        TextSize = 11,
+        Size = UDim2.new(0.5, -8, 1, 0),
+        Padding = 6
+    })
+    
+    local dropdownBtn, _, dropdownLabel = CreateButton(container, {
+        Size = UDim2.new(0.5, -8, 1, -6),
+        Position = UDim2.new(0.5, 4, 0, 3),
+        Text = selected .. " ▼",
+        TextSize = 10,
+        BackgroundColor = Theme.Border,
+        Callback = function()
+            expanded = not expanded
+            if expanded then
+                optionsList.Visible = true
+                dropdownLabel.Text = selected .. " ▲"
+            else
+                optionsList.Visible = false
+                dropdownLabel.Text = selected .. " ▼"
+            end
+        end
+    })
+    
+    -- Options list
+    local optionsList = CreateRoundedFrame(container, {
+        BackgroundColor = Theme.Background,
+        Size = UDim2.new(0.5, -8, 0, math.min(#options * 28, 140)),
+        Position = UDim2.new(0.5, 4, 1, 4),
+        CornerRadius = 3,
+        Border = true
+    })
+    optionsList.Visible = false
+    optionsList.ZIndex = 10
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 3
+    scrollFrame.ScrollBarImageColor3 = Theme.Accent
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #options * 28)
+    scrollFrame.ZIndex = 10
+    scrollFrame.Parent = optionsList
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 1)
+    layout.Parent = scrollFrame
+    
+    for _, option in ipairs(options) do
+        local optionBtn, _ = CreateButton(scrollFrame, {
+            Size = UDim2.new(1, -4, 0, 26),
+            Text = option,
+            TextSize = 10, UDim2.new(1, -5, 0, 33),
+            Text = option,
+            TextSize = 13,
+            BackgroundColor = Theme.Secondary,
+            Callback = function()
+                selected = option
+                dropdownLabel.Text = selected .. " ▼"
+                optionsList.Visible = false
+                expanded = false
+                if callback then callback(option) end
+            end
+        })
+        optionBtn.ZIndex = 11
+    end
+    
+    local dropdownObj = {}
+    function dropdownObj:SetValue(value)
+        selected = value
+        dropdownLabel.Text = selected .. " ▼"
+        if callback then callback(value) end
+    end
+    
+    return container, dropdownObj
+end
+
+function UILib:AddColorPicker(tabName, text, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local currentColor = default or Color3.fromRGB(255, 255, 255)
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 28),
+        CornerRadius = 3
+    })
+    
+    local label = CreateTextLabel(container, {
+        Text = text,
+        TextSize = 11,
+        Size = UDim2.new(1, -42, 1, 0),
+        Padding = 6
+    })
+    
+    local colorDisplay = CreateRoundedFrame(container, {
+        BackgroundColor = currentColor,
+        Size = UDim2.new(0, 32, 0, 20),
+        Position = UDim2.new(1, -36, 0.5, -10),
+        CornerRadius = 3,
+        Border = true
+    })
+    
+    local colorBtn = Instance.new("TextButton")
+    colorBtn.Text = ""
+    colorBtn.BackgroundTransparency = 1
+    colorBtn.Size = UDim2.new(1, 0, 1, 0)
+    colorBtn.Parent = colorDisplay
+    
+    colorBtn.MouseButton1Click:Connect(function()
+        -- Simple color picker (cycles through preset colors)
+        local colors = {
+            Color3.fromRGB(244, 67, 54),   -- Red
+            Color3.fromRGB(233, 30, 99),   -- Pink
+            Color3.fromRGB(156, 39, 176),  -- Purple
+            Color3.fromRGB(103, 58, 183),  -- Deep Purple
+            Color3.fromRGB(63, 81, 181),   -- Indigo
+            Color3.fromRGB(33, 150, 243),  -- Blue
+            Color3.fromRGB(0, 188, 212),   -- Cyan
+            Color3.fromRGB(0, 150, 136),   -- Teal
+            Color3.fromRGB(76, 175, 80),   -- Green
+            Color3.fromRGB(139, 195, 74),  -- Light Green
+            Color3.fromRGB(255, 235, 59),  -- Yellow
+            Color3.fromRGB(255, 152, 0),   -- Orange
+        }
+        
+        local currentIndex = 1
+        for i, color in ipairs(colors) do
+            if color == currentColor then
+                currentIndex = i
+                break
+            end
+        end
+        
+        currentIndex = (currentIndex % #colors) + 1
+        currentColor = colors[currentIndex]
+        colorDisplay.BackgroundColor3 = currentColor
+        
+        if callback then callback(currentColor) end
+    end)
+    
+    local colorObj = {}
+    function colorObj:SetColor(color)
+        currentColor = color
+        colorDisplay.BackgroundColor3 = color
+        if callback then callback(color) end
+    end
+    
+    return container, colorObj
+end
+
+function UILib:AddKeybind(tabName, text, default, callback)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local currentKey = default or Enum.KeyCode.E
+    local listening = false
+    
+    local container = CreateRoundedFrame(self.Tabs[tabName].ScrollFrame, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 28),
+        CornerRadius = 3
+    })
+    
+    local label = CreateTextLabel(container, {
+        Text = text,
+        TextSize = 11,
+        Size = UDim2.new(0.6, -8, 1, 0),
+        Padding = 6
+    })
+    
+    local keybindBtn, _, keybindLabel = CreateButton(container, {
+        Size = UDim2.new(0.4, -8, 1, -6),
+        Position = UDim2.new(0.6, 4, 0, 3),
+        Text = currentKey.Name,
+        TextSize = 10,
+        BackgroundColor = Theme.Border,
+        Callback = function()
+            listening = true
+            keybindLabel.Text = "..."
+        end
+    })
+    
+    local UIS = game:GetService("UserInputService")
+    UIS.InputBegan:Connect(function(input, gameProcessed)
+        if listening and input.UserInputType == Enum.UserInputType.Keyboard then
+            currentKey = input.KeyCode
+            keybindLabel.Text = currentKey.Name
+            listening = false
+            if callback then callback(currentKey) end
+        end
+    end)
+    
+    return container
+end
+
+function UILib:AddDivider(tabName, text)
+    if not self.Tabs[tabName] then
+        warn("Tab '" .. tabName .. "' does not exist!")
+        return
+    end
+    
+    local container = Instance.new("Frame")
+    container.BackgroundTransparency = 1
+    container.Size = UDim2.new(1, 0, 0, 22)
+    container.Parent = self.Tabs[tabName].ScrollFrame
+    
+    if text then
+        local label = CreateTextLabel(container, {
+            Text = text,
+            TextSize = 10,
+            Size = UDim2.new(0, 0, 1, 0),
+            TextXAlignment = Enum.TextXAlignment.Left
+        })
+        label.TextColor3 = Theme.TextDim
+        label.Font = Enum.Font.GothamBold
+        label.AutomaticSize = Enum.AutomaticSize.X
+    end
+    
+    local line = Instance.new("Frame")
+    line.BackgroundColor3 = Theme.Border
+    line.BorderSizePixel = 0
+    line.Size = text and UDim2.new(1, -8, 0, 1) or UDim2.new(1, 0, 0, 1)
+    line.Position = text and UDim2.new(0, 0, 0.5, 0) or UDim2.new(0, 0, 0.5, 0)
+    line.Parent = container
+    
+    return container
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- NOTIFICATION SYSTEM
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:Notify(config)
+    config = config or {}
+    local title = config.Title or "Notification"
+    local message = config.Message or ""
+    local duration = config.Duration or 3
+    local type = config.Type or "Info" -- Info, Success, Warning, Error
+    
+    local colorMap = {
+        Info = Theme.Accent,
+        Success = Theme.Success,
+        Warning = Theme.Warning,
+        Error = Theme.Error
+    }
+    
+    local notification = CreateRoundedFrame(self.NotificationContainer, {
+        BackgroundColor = Theme.Secondary,
+        Size = UDim2.new(1, 0, 0, 64),
+        CornerRadius = 3,
+        Border = true
+    })
+    
+    -- Color indicator
+    local indicator = CreateRoundedFrame(notification, {
+        BackgroundColor = colorMap[type] or Theme.Accent,
+        Size = UDim2.new(0, 3, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        CornerRadius = 3
+    })
+    
+    -- Title
+    local titleLabel = CreateTextLabel(notification, {
+        Text = title,
+        TextSize = 12,
+        Size = UDim2.new(1, -40, 0, 20),
+        Position = UDim2.new(0, 12, 0, 4),
+    })
+    titleLabel.Font = Enum.Font.GothamBold
+    
+    -- Message
+    local messageLabel = CreateTextLabel(notification, {
+        Text = message,
+        TextSize = 10,
+        Size = UDim2.new(1, -40, 1, -28),
+        Position = UDim2.new(0, 12, 0, 24),
+        TextWrapped = true,
+        TextYAlignment = Enum.TextYAlignment.Top
+    })
+    messageLabel.TextColor3 = Theme.TextDim
+    
+    -- Close button
+    local closeBtn, _ = CreateButton(notification, {
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -28, 0, 4),
+        Text = "×",
+        TextSize = 16,
+        BackgroundColor = Theme.Background,
+        Callback = function()
+            notification:Destroy()
+        end
+    })
+    
+    -- Slide in animation
+    notification.Position = UDim2.new(1, 0, 0, 0)
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(notification, TweenInfo.new(0.3), {
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    
+    -- Auto-remove after duration
+    task.delay(duration, function()
+        if notification and notification.Parent then
+            TweenService:Create(notification, TweenInfo.new(0.3), {
+                Position = UDim2.new(1, 0, 0, 0)
+            }):Play()
+            task.wait(0.3)
+            notification:Destroy()
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- WINDOW CONTROLS
+-- ═══════════════════════════════════════════════════════════════
+
+function UILib:ToggleMinimize()
+    local TweenService = game:GetService("TweenService")
+    self.Minimized = not self.Minimized
+    
+    local targetSize = self.Minimized and 
+        UDim2.new(self.Size.X.Scale, self.Size.X.Offset, 0, Theme.TitleBarHeight) or 
+        self.Size
+    
+    TweenService:Create(self.MainWindow, TweenInfo.new(Theme.AnimationSpeed), {
+        Size = targetSize
+    }):Play()
+end
+
+function UILib:Toggle()
+    self.MainWindow.Visible = not self.MainWindow.Visible
+end
+
+function UILib:Close()
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(self.MainWindow, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    task.wait(0.3)
+    self.ScreenGui:Destroy()
+end
+
+function UILib:SetTheme(newTheme)
+    for k, v in pairs(newTheme) do
+        Theme[k] = v
+    end
+end
+
+function UILib:GetTheme()
+    return Theme
+end
+
+return UILib
